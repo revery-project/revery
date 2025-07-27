@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.2](https://github.com/revery-project/revery/compare/app-v0.1.1...app-v0.1.2) (2025-07-27)
+
+
+### Bug Fixes
+
+* **revery,app:** fix key deriving ([1abc4ff](https://github.com/revery-project/revery/commit/1abc4ff7f6f8fd5fa0651c60ddcc1b66b2aedc7a))
+
 ## [0.1.1](https://github.com/revery-project/revery/compare/app-v0.1.0...app-v0.1.1) (2025-07-27)
 
 
