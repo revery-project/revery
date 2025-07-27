@@ -326,7 +326,8 @@ async fn host_session_impl(
     )?;
 
     // Set up conversation
-    let conversation = session::Conversation::new(&shared_secret, &onion_address);
+    let conversation =
+        session::Conversation::new(&shared_secret, &onion_address, session_timestamp);
     wire.set_conversation(conversation);
 
     // Emit connected status
@@ -461,7 +462,7 @@ async fn join_session_impl(
     )?;
 
     // Set up conversation
-    let conversation = session::Conversation::new(&shared_secret, address);
+    let conversation = session::Conversation::new(&shared_secret, address, session_timestamp);
     wire.set_conversation(conversation);
 
     // Emit connected status

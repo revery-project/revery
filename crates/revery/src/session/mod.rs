@@ -131,28 +131,4 @@ mod tests {
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), SessionError::HmacVerificationFailed);
     }
-
-    #[test]
-    fn test_conversation_created_at() {
-        let shared_secret = b"test-shared-secret-data";
-        let address = "test.onion";
-
-        let before = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-
-        let conversation = Conversation::new(shared_secret, address);
-
-        let after = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap()
-            .as_secs();
-
-        let created_at = conversation.created_at();
-
-        // Verify the timestamp is reasonable (within a few seconds of creation)
-        assert!(created_at >= before);
-        assert!(created_at <= after);
-    }
 }

@@ -28,7 +28,8 @@
 //!     let shared_secret = auth.authenticate(&peer_msg)?;
 //!
 //!     // Set up conversation and send message
-//!     let conversation = session::Conversation::new(&shared_secret, "example.onion");
+//!     let timestamp = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH)?.as_millis();
+//!     let conversation = session::Conversation::new(&shared_secret, "example.onion", timestamp.try_into()?);
 //!     wire.set_conversation(conversation);
 //!     wire.send_text_message("Hello!").await?;
 //!

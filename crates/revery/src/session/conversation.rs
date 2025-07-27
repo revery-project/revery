@@ -20,12 +20,7 @@ pub struct Conversation {
 
 impl Conversation {
     /// Creates a new conversation by deriving session keys from shared secret
-    pub fn new(shared_secret: &[u8], address: &str) -> Self {
-        let created_at = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .expect("Time went backwards")
-            .as_secs();
-
+    pub fn new(shared_secret: &[u8], address: &str, created_at: u64) -> Self {
         let session_keys = SessionKeys::derive(shared_secret, address, created_at);
 
         Self {
