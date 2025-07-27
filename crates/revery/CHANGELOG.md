@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.1](https://github.com/revery-project/revery/compare/revery-v0.1.0...revery-v0.1.1) (2025-07-27)
+
+
+### Bug Fixes
+
+* **revery,app:** allow network instability ([#4](https://github.com/revery-project/revery/issues/4)) ([0f049f6](https://github.com/revery-project/revery/commit/0f049f6eedd5b1f094c970710fd4980b59984441))
+
 ## 0.1.0 (2025-07-27)
 
 
