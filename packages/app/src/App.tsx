@@ -1,9 +1,7 @@
 import "./App.css";
 
-import { useDisclosure } from "@heroui/react";
 import { useReverySession } from "./hooks/useReverySession";
-import { Entry, ConnectingView, ChatView, ErrorModal } from "./components";
-import { useEffect } from "react";
+import { Entry, ConnectingView, ChatView } from "./components";
 
 function App() {
   const {
@@ -14,7 +12,6 @@ function App() {
     logs,
     isLoading,
     hostAddress,
-    error,
 
     // Actions
     hostSession,
@@ -22,22 +19,7 @@ function App() {
     sendMessage,
     sendImage,
     disconnect,
-    clearError,
   } = useReverySession();
-
-  const { isOpen, onOpen, onOpenChange } = useDisclosure();
-
-  // Open error modal when error occurs
-  useEffect(() => {
-    if (error) {
-      onOpen();
-    }
-  }, [error, onOpen]);
-
-  const handleErrorClose = () => {
-    clearError();
-    onOpenChange();
-  };
 
   const renderContent = () => {
     switch (appState) {
@@ -81,8 +63,6 @@ function App() {
           {renderContent()}
         </main>
       </div>
-
-      <ErrorModal isOpen={isOpen} onClose={handleErrorClose} error={error} />
     </div>
   );
 }

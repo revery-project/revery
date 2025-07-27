@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { addToast } from "@heroui/react";
 
 // Content types matching backend enum
 export enum ContentType {
@@ -23,6 +24,7 @@ type UpdateType =
   | "info"
   | "success"
   | "error"
+  | "warning"
   | "debug"
   | "message_sent"
   | "message_received";
@@ -57,13 +59,12 @@ export const useReverySession = () => {
     state: { type: "disconnected" },
   });
   const [latestMessage, setLatestMessage] = useState<LatestMessage | null>(
-    null,
+    null
   );
   const [logs, setLogs] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState<string>("");
   const [hostAddress, setHostAddress] = useState<string>("");
-  const [error, setError] = useState<string>("");
 
   // Track if listeners are already set up to prevent duplicates
   const listenersSetUp = useRef(false);
@@ -86,9 +87,17 @@ export const useReverySession = () => {
           ]);
 
           if (update.type === "error") {
-            setError(update.message);
+            addToast({
+              title: update.message,
+              color: "danger",
+            });
             setIsLoading(false);
             setAppState("entry");
+          } else if (update.type === "warning") {
+            addToast({
+              title: update.message,
+              color: "warning",
+            });
           } else if (
             update.type === "success" &&
             update.message.includes("Authentication successful")
@@ -99,7 +108,7 @@ export const useReverySession = () => {
               setIsLoading(false);
             }, 100);
           }
-        },
+        }
       );
 
       // Connection status changes
@@ -123,8 +132,12 @@ export const useReverySession = () => {
             setLatestMessage(null);
             setLogs([]);
             setHostAddress("");
+            addToast({
+              title: "Connection lost",
+              color: "warning",
+            });
           }
-        },
+        }
       );
 
       // Incoming messages
@@ -176,12 +189,14 @@ export const useReverySession = () => {
     setIsLoading(true);
     setAppState("connecting");
     setLogs([]);
-    setError("");
 
     try {
       await invoke("host_session", { secret: passphrase });
     } catch (error) {
-      setError(`Failed to host session: ${error}`);
+      addToast({
+        title: `Failed to host session: ${error}`,
+        color: "danger",
+      });
       setIsLoading(false);
       setAppState("entry");
     }
@@ -191,12 +206,14 @@ export const useReverySession = () => {
     setIsLoading(true);
     setAppState("connecting");
     setLogs([]);
-    setError("");
 
     try {
       await invoke("join_session", { address, secret: passphrase });
     } catch (error) {
-      setError(`Failed to join session: ${error}`);
+      addToast({
+        title: `Failed to join session: ${error}`,
+        color: "danger",
+      });
       setIsLoading(false);
       setAppState("entry");
     }
@@ -205,7 +222,10 @@ export const useReverySession = () => {
   const sendMessage = async (message: string) => {
     // Don't allow sending messages unless we're fully connected
     if (connectionStatus.state.type !== "connected") {
-      setError("Cannot send message: Connection not ready");
+      addToast({
+        title: "Cannot send message: Connection not ready",
+        color: "danger",
+      });
       return;
     }
 
@@ -217,7 +237,10 @@ export const useReverySession = () => {
         },
       });
     } catch (error) {
-      setError(`Failed to send message: ${error}`);
+      addToast({
+        title: `Failed to send message: ${error}`,
+        color: "danger",
+      });
     }
   };
 
@@ -227,6 +250,10 @@ export const useReverySession = () => {
         await invoke("disconnect_session", { sessionId: currentSessionId });
       } catch (error) {
         console.error("Failed to disconnect:", error);
+        addToast({
+          title: "Failed to disconnect cleanly",
+          color: "warning",
+        });
       }
     }
 
@@ -238,15 +265,15 @@ export const useReverySession = () => {
     setCurrentSessionId("");
     setHostAddress("");
     setIsLoading(false);
-    setError("");
   };
-
-  const clearError = () => setError("");
 
   const sendImage = async (imageData: Uint8Array) => {
     // Don't allow sending messages unless we're fully connected
     if (connectionStatus.state.type !== "connected") {
-      setError("Cannot send message: Connection not ready");
+      addToast({
+        title: "Cannot send message: Connection not ready",
+        color: "danger",
+      });
       return;
     }
 
@@ -258,7 +285,10 @@ export const useReverySession = () => {
         },
       });
     } catch (error) {
-      setError(`Failed to send image: ${error}`);
+      addToast({
+        title: `Failed to send image: ${error}`,
+        color: "danger",
+      });
     }
   };
 
@@ -270,7 +300,6 @@ export const useReverySession = () => {
     logs,
     isLoading,
     hostAddress,
-    error,
 
     // Actions
     hostSession,
@@ -278,6 +307,5 @@ export const useReverySession = () => {
     sendMessage,
     sendImage,
     disconnect,
-    clearError,
   };
 };
