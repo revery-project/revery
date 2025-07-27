@@ -632,9 +632,9 @@ where
                         );
 
                         let error_msg = if is_network_error {
-                            format!("Network error (attempt {}/{}): Connection unstable", consecutive_errors, MAX_CONSECUTIVE_ERRORS)
+                            format!("Network error (attempt {consecutive_errors}/{MAX_CONSECUTIVE_ERRORS}): Connection unstable")
                         } else {
-                            format!("Failed to receive message (error {}/{}): {e:?}", consecutive_errors, MAX_CONSECUTIVE_ERRORS)
+                            format!("Failed to receive message (error {consecutive_errors}/{MAX_CONSECUTIVE_ERRORS}): {e:?}")
                         };
                         let _ = app.emit(
                             "session_update",
