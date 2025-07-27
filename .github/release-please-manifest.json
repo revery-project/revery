@@ -1,5 +1,5 @@
 {
-  "crates/revery": "0.1.1",
+  "crates/revery": "0.1.2",
   "crates/revery-onion": "0.1.0",
   "packages/app": "0.1.1"
 }
