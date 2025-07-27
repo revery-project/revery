@@ -39,10 +39,6 @@ Revery is for when you need to talk, but can't afford for anyone to prove you di
 
 ## Try it out
 
-```bash
-just run dev
-```
-
 - Enter your passphrase and click **Host** to create a session
 - Share the generated onion address with your contact
 - They enter the address and passphrase to join
