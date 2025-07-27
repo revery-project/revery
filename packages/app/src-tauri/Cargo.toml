@@ -1,6 +1,6 @@
 [package]
 name = "revery-app"
-version = "0.1.1"
+version = "0.1.2"
 description = "Revery"
 authors = ["you"]
 edition = "2024"
