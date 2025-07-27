@@ -5,7 +5,7 @@ use revery::{auth, protocol, session};
 use revery_onion::{OnionClient, OnionService};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, State};
-use tokio::sync::{mpsc, Mutex};
+use tokio::sync::{Mutex, mpsc};
 
 /// Connection states for the messaging session
 #[derive(Clone, Serialize)]
@@ -264,10 +264,10 @@ async fn host_session_impl(
         },
     )?;
 
-    // Create wire protocol
-    let mut wire = protocol::WireProtocol::new(stream);
+    // Create wire protocol with extended timeout for cross-network stability
+    let mut wire = protocol::WireProtocol::with_timeout(stream, std::time::Duration::from_secs(45));
 
-    // Perform authentication - EXACTLY like CLI
+    // Perform authentication
     let auth = auth::AuthFlow::new(auth::SessionRole::Creator, secret);
 
     // Receive peer's auth message
@@ -404,8 +404,8 @@ async fn join_session_impl(
         },
     )?;
 
-    // Create wire protocol
-    let mut wire = protocol::WireProtocol::new(stream);
+    // Create wire protocol with extended timeout for cross-network stability
+    let mut wire = protocol::WireProtocol::with_timeout(stream, std::time::Duration::from_secs(45));
 
     // Perform authentication
     let auth = auth::AuthFlow::new(auth::SessionRole::Joiner, secret);
@@ -494,21 +494,96 @@ where
         *sender_guard = Some(tx);
     }
 
+    let mut consecutive_errors = 0;
+    const MAX_CONSECUTIVE_ERRORS: u32 = 5; // Allow more errors for network instability
+    let mut last_successful_activity = tokio::time::Instant::now();
+    const HEALTH_CHECK_INTERVAL: tokio::time::Duration = tokio::time::Duration::from_secs(30);
+
+    // Health check timer
+    let mut health_check_timer = tokio::time::interval(HEALTH_CHECK_INTERVAL);
+    health_check_timer.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
     loop {
         tokio::select! {
+            // Periodic health check
+            _ = health_check_timer.tick() => {
+                // If we haven't had successful activity for too long, emit a warning
+                if last_successful_activity.elapsed() > tokio::time::Duration::from_secs(120) {
+                    let _ = app.emit(
+                        "session_update",
+                        SessionUpdate {
+                            update_type: UpdateType::Info,
+                            message: "Connection seems unstable - checking network health...".to_string(),
+                            data: None,
+                        },
+                    );
+                }
+            }
             // Handle outgoing messages
             message = rx.recv() => {
                 match message {
                     Some(MessageContent::Text { content }) => {
-                        // Don't hold any locks during send
-                        if wire.send_text_message(&content).await.is_err() {
-                            break;
+                        match wire.send_text_message(&content).await {
+                            Ok(()) => {
+                                consecutive_errors = 0; // Reset error counter on success
+                                last_successful_activity = tokio::time::Instant::now();
+                            }
+                            Err(e) => {
+                                consecutive_errors += 1;
+                                let error_msg = format!("Failed to send message: {e:?}");
+                                let _ = app.emit(
+                                    "session_update",
+                                    SessionUpdate {
+                                        update_type: UpdateType::Error,
+                                        message: error_msg,
+                                        data: None,
+                                    },
+                                );
+
+                                if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
+                                    let _ = app.emit(
+                                        "session_update",
+                                        SessionUpdate {
+                                            update_type: UpdateType::Error,
+                                            message: "Too many consecutive errors, disconnecting".to_string(),
+                                            data: None,
+                                        },
+                                    );
+                                    break;
+                                }
+                            }
                         }
                     }
                     Some(MessageContent::Image { data }) => {
-                        // Don't hold any locks during send
-                        if wire.send_image_message(&data).await.is_err() {
-                            break;
+                        match wire.send_image_message(&data).await {
+                            Ok(()) => {
+                                consecutive_errors = 0; // Reset error counter on success
+                                last_successful_activity = tokio::time::Instant::now();
+                            }
+                            Err(e) => {
+                                consecutive_errors += 1;
+                                let error_msg = format!("Failed to send image: {e:?}");
+                                let _ = app.emit(
+                                    "session_update",
+                                    SessionUpdate {
+                                        update_type: UpdateType::Error,
+                                        message: error_msg,
+                                        data: None,
+                                    },
+                                );
+
+                                if consecutive_errors >= MAX_CONSECUTIVE_ERRORS {
+                                    let _ = app.emit(
+                                        "session_update",
+                                        SessionUpdate {
+                                            update_type: UpdateType::Error,
+                                            message: "Too many consecutive errors, disconnecting".to_string(),
+                                            data: None,
+                                        },
+                                    );
+                                    break;
+                                }
+                            }
                         }
                     }
                     None => break, // Channel closed
@@ -519,6 +594,9 @@ where
             result = wire.receive_chat_message() => {
                 match result {
                     Ok((content, content_type)) => {
+                        consecutive_errors = 0; // Reset error counter on successful receive
+                        last_successful_activity = tokio::time::Instant::now();
+
                         // Convert bytes to string with better error handling
                         let message = match String::from_utf8(content.clone()) {
                             Ok(s) => s,
@@ -545,7 +623,19 @@ where
                         );
                     }
                     Err(e) => {
-                        let error_msg = format!("Failed to receive message: {e:?}");
+                        consecutive_errors += 1;
+
+                        // Classify the error - some are more serious than others
+                        let is_network_error = matches!(e,
+                            protocol::WireError::Io(_) |
+                            protocol::WireError::ConnectionClosed
+                        );
+
+                        let error_msg = if is_network_error {
+                            format!("Network error (attempt {consecutive_errors}/{MAX_CONSECUTIVE_ERRORS}): Connection unstable")
+                        } else {
+                            format!("Failed to receive message (error {consecutive_errors}/{MAX_CONSECUTIVE_ERRORS}): {e:?}")
+                        };
                         let _ = app.emit(
                             "session_update",
                             SessionUpdate {
@@ -554,8 +644,34 @@ where
                                 data: None,
                             },
                         );
-                        // Connection error - break loop
-                        break;
+
+                        // For network errors, be more lenient
+                        let disconnect_threshold = if is_network_error {
+                            MAX_CONSECUTIVE_ERRORS + 2 // Allow extra retries for network issues
+                        } else {
+                            MAX_CONSECUTIVE_ERRORS
+                        };
+
+                        // Only disconnect after multiple consecutive errors
+                        if consecutive_errors >= disconnect_threshold {
+                            let _ = app.emit(
+                                "session_update",
+                                SessionUpdate {
+                                    update_type: UpdateType::Error,
+                                    message: "Too many consecutive receive errors, disconnecting".to_string(),
+                                    data: None,
+                                },
+                            );
+                            break;
+                        }
+
+                        // Wait progressively longer for network errors
+                        let wait_time = if is_network_error {
+                            tokio::time::Duration::from_millis(500 + (consecutive_errors as u64 * 200))
+                        } else {
+                            tokio::time::Duration::from_millis(200)
+                        };
+                        tokio::time::sleep(wait_time).await;
                     }
                 }
             }
