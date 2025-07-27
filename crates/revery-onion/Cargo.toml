@@ -1,0 +1,22 @@
+[package]
+name = "revery-onion"
+version = "0.0.0"
+edition = { workspace = true }
+license = { workspace = true }
+description = { workspace = true }
+repository = "https://github.com/revery-project/revery-onion"
+documentation = "https://docs.rs/revery-onion"
+
+[dependencies]
+arti-client = { version = "0.32.0", features = [
+    "onion-service-service",
+    "onion-service-client",
+    "static-sqlite",
+] }
+futures = "0.3.31"
+rand = "0.9.1"
+thiserror = "2.0.12"
+tor-cell = "0.32.0"
+tor-hsservice = "0.32.0"
+tor-proto = "0.32.0"
+tor-rtcompat = { version = "0.32.0", features = ["tokio", "native-tls"] }

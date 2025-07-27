@@ -1,0 +1,38 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "separate-pull-requests": true,
+  "packages": {
+    "crates/revery": {
+      "release-type": "rust",
+      "package-name": "revery",
+      "changelog-path": "CHANGELOG.md",
+      "include-component-in-tag": true,
+      "initial-version": "0.1.0"
+    },
+    "crates/revery-onion": {
+      "release-type": "rust",
+      "package-name": "revery-onion",
+      "changelog-path": "CHANGELOG.md",
+      "include-component-in-tag": true,
+      "initial-version": "0.1.0"
+    },
+    "packages/app": {
+      "release-type": "node",
+      "package-name": "app",
+      "changelog-path": "CHANGELOG.md",
+      "initial-version": "0.1.0",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "src-tauri/Cargo.toml",
+          "jsonpath": "$.package.version"
+        },
+        {
+          "type": "json",
+          "path": "src-tauri/tauri.conf.json",
+          "jsonpath": "$.version"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,22 @@
+[package]
+name = "revery"
+version = "0.0.0"
+edition = { workspace = true }
+license = { workspace = true }
+description = { workspace = true }
+repository = "https://github.com/revery-project/revery"
+documentation = "https://docs.rs/revery"
+
+[dependencies]
+base64 = "0.22.1"
+bincode = "2.0.1"
+blake3 = "1.8.2"
+chacha20 = { version = "0.9.1", features = ["std"] }
+hmac = "0.12.1"
+img-parts = "0.3.3"
+infer = "0.19.0"
+sha2 = "0.10.8"
+spake2 = { version = "0.4.0", features = ["std"] }
+thiserror = "2.0.12"
+tokio = { version = "1.46.1", features = ["full"] }
+zeroize = { version = "1.8.1", features = ["derive"] }

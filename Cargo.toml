@@ -1,0 +1,8 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "packages/app/src-tauri"]
+
+[workspace.package]
+edition = "2024"
+license = "Apache-2.0 OR MIT"
+description = "💭 Conversations that never happened."
