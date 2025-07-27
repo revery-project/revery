@@ -1,4 +1,5 @@
 use bincode::{Decode, Encode};
+use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 
 use crate::{
@@ -38,6 +39,7 @@ impl TryFrom<u8> for MessageType {
 pub struct WireProtocol<S> {
     stream: S,
     conversation: Option<Conversation>,
+    timeout: Duration,
 }
 
 impl<S> WireProtocol<S>
@@ -49,6 +51,16 @@ where
         Self {
             stream,
             conversation: None,
+            timeout: Duration::from_secs(30), // Default 30 second timeout
+        }
+    }
+
+    /// Creates a new wire protocol handler with custom timeout
+    pub fn with_timeout(stream: S, timeout: Duration) -> Self {
+        Self {
+            stream,
+            conversation: None,
+            timeout,
         }
     }
 
@@ -156,37 +168,81 @@ where
             return Err(WireError::MessageTooLarge(payload.len()));
         }
 
+        // Send with timeout
+        let send_timeout = if payload.len() > 1024 * 1024 {
+            self.timeout * 3 // 3x timeout for large messages
+        } else {
+            self.timeout
+        };
+
         let type_bytes = [msg_type as u8];
-        self.stream.write_all(&type_bytes).await?;
+        match tokio::time::timeout(send_timeout, self.stream.write_all(&type_bytes)).await {
+            Ok(Ok(())) => {}
+            Ok(Err(e)) => return Err(WireError::Io(e)),
+            Err(_) => return Err(WireError::ConnectionClosed),
+        }
 
         let len_bytes = (payload.len() as u32).to_be_bytes();
-        self.stream.write_all(&len_bytes).await?;
+        match tokio::time::timeout(send_timeout, self.stream.write_all(&len_bytes)).await {
+            Ok(Ok(())) => {}
+            Ok(Err(e)) => return Err(WireError::Io(e)),
+            Err(_) => return Err(WireError::ConnectionClosed),
+        }
 
-        self.stream.write_all(payload).await?;
+        match tokio::time::timeout(send_timeout, self.stream.write_all(payload)).await {
+            Ok(Ok(())) => {}
+            Ok(Err(e)) => return Err(WireError::Io(e)),
+            Err(_) => return Err(WireError::ConnectionClosed),
+        }
 
-        self.stream.flush().await?;
+        match tokio::time::timeout(self.timeout, self.stream.flush()).await {
+            Ok(Ok(())) => {}
+            Ok(Err(e)) => return Err(WireError::Io(e)),
+            Err(_) => return Err(WireError::ConnectionClosed),
+        }
 
         Ok(())
     }
 
-    /// Receives a raw message and parses the wire format
+    /// Receives a raw message and parses the wire format with timeout
     ///
     /// Wire format: [type:1][length:4][payload:length]
     async fn receive_raw_message(&mut self) -> Result<(MessageType, Vec<u8>), WireError> {
+        // Read message type with timeout
         let mut type_buf = [0u8; 1];
-        self.stream.read_exact(&mut type_buf).await?;
+        match tokio::time::timeout(self.timeout, self.stream.read_exact(&mut type_buf)).await {
+            Ok(Ok(_)) => {}
+            Ok(Err(e)) => return Err(WireError::Io(e)),
+            Err(_) => return Err(WireError::ConnectionClosed),
+        }
         let msg_type = MessageType::try_from(type_buf[0])?;
 
+        // Read length with timeout
         let mut len_buf = [0u8; 4];
-        self.stream.read_exact(&mut len_buf).await?;
+        match tokio::time::timeout(self.timeout, self.stream.read_exact(&mut len_buf)).await {
+            Ok(Ok(_)) => {}
+            Ok(Err(e)) => return Err(WireError::Io(e)),
+            Err(_) => return Err(WireError::ConnectionClosed),
+        }
         let payload_len = u32::from_be_bytes(len_buf) as usize;
 
         if payload_len > MAX_MESSAGE_SIZE {
             return Err(WireError::MessageTooLarge(payload_len));
         }
 
+        // Read payload with timeout (longer for large messages)
+        let read_timeout = if payload_len > 1024 * 1024 {
+            self.timeout * 3 // 3x timeout for large messages
+        } else {
+            self.timeout
+        };
+
         let mut payload = vec![0u8; payload_len];
-        self.stream.read_exact(&mut payload).await?;
+        match tokio::time::timeout(read_timeout, self.stream.read_exact(&mut payload)).await {
+            Ok(Ok(_)) => {}
+            Ok(Err(e)) => return Err(WireError::Io(e)),
+            Err(_) => return Err(WireError::ConnectionClosed),
+        }
 
         Ok((msg_type, payload))
     }
