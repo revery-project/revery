@@ -47,8 +47,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: lts/*
-          cache: 'npm'
-          cache-dependency-path: packages/app/package-lock.json
+          cache: "npm"
+          cache-dependency-path: ${{github.workspace}}/packages/app/package-lock.json
       - run: npm ci --workspace packages/app
       - run: npm run test:run --workspace packages/app
   test-apps:
@@ -71,8 +71,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: lts/*
-          cache: 'npm'
-          cache-dependency-path: packages/app/package-lock.json
+          cache: "npm"
+          cache-dependency-path: ${{github.workspace}}/packages/app/package-lock.json
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
