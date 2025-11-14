@@ -6,6 +6,7 @@
 ![Proof of Concept](https://img.shields.io/badge/Proof_of_Concept-black)
 ![CI Status](https://img.shields.io/github/actions/workflow/status/revery-project/revery/ci.yml?label=CI)
 ![GitHub Release](https://img.shields.io/github/v/release/revery-project/revery)
+[![Matrix](https://img.shields.io/matrix/revery%3Amatrix.org)](https://matrix.to/#/#revery:matrix.org)
 
 </div>
 
