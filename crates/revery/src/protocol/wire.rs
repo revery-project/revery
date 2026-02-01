@@ -182,7 +182,7 @@ where
             Err(_) => return Err(WireError::ConnectionClosed),
         }
 
-        let len_bytes = (payload.len() as u32).to_be_bytes();
+        let len_bytes = (payload.len() as u32).to_le_bytes();
         match tokio::time::timeout(send_timeout, self.stream.write_all(&len_bytes)).await {
             Ok(Ok(())) => {}
             Ok(Err(e)) => return Err(WireError::Io(e)),
@@ -224,7 +224,7 @@ where
             Ok(Err(e)) => return Err(WireError::Io(e)),
             Err(_) => return Err(WireError::ConnectionClosed),
         }
-        let payload_len = u32::from_be_bytes(len_buf) as usize;
+        let payload_len = u32::from_le_bytes(len_buf) as usize;
 
         if payload_len > MAX_MESSAGE_SIZE {
             return Err(WireError::MessageTooLarge(payload_len));
