@@ -1,6 +1,6 @@
 use std::time::{SystemTime, UNIX_EPOCH};
 
-use zeroize::ZeroizeOnDrop;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use crate::auth::SessionKeys;
 use crate::session::error::SessionError;
@@ -11,7 +11,7 @@ use crate::session::message::{ContentType, Message};
 /// A conversation maintains sequence counters and encryption keys for a messaging
 /// session. Importantly, it provides methods to create both legitimate messages
 /// and cryptographically indistinguishable forgeries after the fact.
-#[derive(ZeroizeOnDrop)]
+#[derive(Zeroize, ZeroizeOnDrop)]
 pub struct Conversation {
     session_keys: SessionKeys,
     next_sequence: u64,

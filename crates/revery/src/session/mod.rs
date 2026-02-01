@@ -11,6 +11,8 @@ pub use message::{ContentType, Message};
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::auth::SessionKeys;
+    use zeroize::Zeroize;
 
     #[test]
     fn test_message_encrypt_decrypt() {
@@ -130,5 +132,50 @@ mod tests {
         let result = message.decrypt(&encryption_key, &signing_key);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), SessionError::HmacVerificationFailed);
+    }
+
+    #[test]
+    fn test_message_zeroize() {
+        let encryption_key = [0x42; 32];
+        let signing_key = [0x43; 32];
+
+        let mut message = Message::encrypt(
+            1,
+            1698123456,
+            ContentType::Text,
+            b"Secret message content",
+            &encryption_key,
+            &signing_key,
+        );
+
+        // Message should have non-zero content after encryption
+        assert!(!message.payload.is_empty());
+        assert_ne!(message.hmac, [0u8; 32]);
+
+        // Manually zeroize (same behavior as ZeroizeOnDrop on drop)
+        message.zeroize();
+
+        // All fields should now be zeroed
+        assert_eq!(message.sequence, 0);
+        assert_eq!(message.timestamp, 0);
+        assert_eq!(message.content_type, 0);
+        assert!(message.payload.is_empty());
+        assert_eq!(message.hmac, [0u8; 32]);
+    }
+
+    #[test]
+    fn test_conversation_zeroize() {
+        let keys = SessionKeys::derive(b"test-secret", "test.onion", 1234567890);
+        let mut conversation = Conversation::from_keys(keys);
+
+        // Create a message to increment sequence
+        let _ = conversation.create_text_message("test");
+        assert!(conversation.current_sequence() > 1);
+
+        // Manually zeroize (same behavior as ZeroizeOnDrop on drop)
+        conversation.zeroize();
+
+        // Sequence should be zeroed
+        assert_eq!(conversation.current_sequence(), 0);
     }
 }
