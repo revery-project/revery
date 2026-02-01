@@ -124,10 +124,17 @@ impl Conversation {
     }
 
     /// Gets the current Unix timestamp as a 32-bit value
+    ///
+    /// # Panics
+    /// Panics if the current time is before the Unix epoch or after year 2106
+    /// (when Unix time exceeds u32::MAX)
     fn current_unix_timestamp() -> u32 {
-        SystemTime::now()
+        let secs = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .expect("Time went backwards")
-            .as_secs() as u32
+            .as_secs();
+
+        secs.try_into()
+            .expect("Timestamp overflow: Unix time exceeds u32::MAX (year 2106)")
     }
 }
