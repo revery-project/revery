@@ -6,7 +6,7 @@ use hmac::{Hmac, Mac};
 use infer;
 use sha2::Sha256;
 use subtle::ConstantTimeEq;
-use zeroize::ZeroizeOnDrop;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 use super::error::SessionError;
 
@@ -17,7 +17,7 @@ type HmacSha256 = Hmac<Sha256>;
 /// The design enables perfect deniability: the same message structure
 /// can be used to create forgeries that are cryptographically indistinguishable
 /// from original messages when using the same key material.
-#[derive(Encode, Decode, ZeroizeOnDrop)]
+#[derive(Encode, Decode, Zeroize, ZeroizeOnDrop)]
 pub struct Message {
     pub sequence: u64,
     pub timestamp: u32,

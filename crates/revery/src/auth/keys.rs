@@ -1,12 +1,12 @@
 use blake3::Hasher;
-use zeroize::ZeroizeOnDrop;
+use zeroize::{Zeroize, ZeroizeOnDrop};
 
 /// Derived session keys from successful SPAKE2 authentication
 ///
 /// Contains separate keys for authentication verification and message encryption.
 /// Both keys are cryptographically derived from the shared SPAKE2 output using
 /// domain separation to ensure they're independent.
-#[derive(Clone, ZeroizeOnDrop)]
+#[derive(Clone, Zeroize, ZeroizeOnDrop)]
 pub struct SessionKeys {
     /// Key used for authentication challenge verification
     pub auth_key: [u8; 32],

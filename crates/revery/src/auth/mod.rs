@@ -11,6 +11,7 @@ pub use keys::SessionKeys;
 #[cfg(test)]
 mod tests {
     use super::*;
+    use zeroize::Zeroize;
 
     #[test]
     fn test_successful_authentication() {
@@ -92,5 +93,24 @@ mod tests {
         assert_ne!(keys1.encryption_key, keys2.encryption_key);
         assert_ne!(keys1.auth_key, keys2.auth_key);
         assert_ne!(keys1.signing_key, keys2.signing_key);
+    }
+
+    #[test]
+    fn test_session_keys_zeroize() {
+        // Verify SessionKeys properly implements Zeroize via the derive macro
+        let mut keys = SessionKeys::derive(b"test-secret", "test.onion", 1234567890);
+
+        // Keys should be non-zero after derivation
+        assert_ne!(keys.auth_key, [0u8; 32]);
+        assert_ne!(keys.encryption_key, [0u8; 32]);
+        assert_ne!(keys.signing_key, [0u8; 32]);
+
+        // Manually zeroize (same behavior as ZeroizeOnDrop on drop)
+        keys.zeroize();
+
+        // All keys should now be zeroed
+        assert_eq!(keys.auth_key, [0u8; 32]);
+        assert_eq!(keys.encryption_key, [0u8; 32]);
+        assert_eq!(keys.signing_key, [0u8; 32]);
     }
 }
