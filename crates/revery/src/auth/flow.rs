@@ -2,6 +2,7 @@ use bincode::{Decode, Encode};
 use blake3::Hasher;
 use spake2::{Ed25519Group, Identity, Password, Spake2};
 use subtle::ConstantTimeEq;
+use zeroize::Zeroizing;
 
 use crate::auth::{AuthError, SessionKeys};
 
@@ -94,11 +95,17 @@ impl AuthFlow {
     }
 
     /// Completes authentication using the peer's message and returns shared secret
-    pub fn authenticate(mut self, peer_message: &AuthMessage) -> Result<Vec<u8>, AuthError> {
+    ///
+    /// The returned secret is wrapped in `Zeroizing` to ensure it is securely
+    /// erased from memory when dropped.
+    pub fn authenticate(
+        mut self,
+        peer_message: &AuthMessage,
+    ) -> Result<Zeroizing<Vec<u8>>, AuthError> {
         let state = self.state.take().ok_or(AuthError::InvalidState)?;
         let output = state.finish(&peer_message.exchange_message)?;
 
-        Ok(output)
+        Ok(Zeroizing::new(output))
     }
 
     /// Generates a challenge hash to verify both parties derived the same keys
