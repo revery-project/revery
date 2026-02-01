@@ -602,7 +602,7 @@ where
                         let message = match String::from_utf8(content.clone()) {
                             Ok(s) => s,
                             Err(e) => {
-                                let error_msg = format!("Failed to decode message as UTF-8: {} (content size: {} bytes)", e, content.len());
+                                let error_msg = format!("Failed to decode message as UTF-8: {}", e);
                                 let _ = app.emit(
                                     "session_update",
                                     SessionUpdate {
