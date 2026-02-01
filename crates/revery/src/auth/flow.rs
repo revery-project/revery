@@ -18,7 +18,7 @@ pub enum SessionRole {
 /// Internal state for SPAKE2 key exchange
 struct State {
     spake2: Spake2<Ed25519Group>,
-    exchange_message: Vec<u8>,
+    exchange_message: Zeroizing<Vec<u8>>,
 }
 
 impl State {
@@ -35,7 +35,7 @@ impl State {
 
                 Self {
                     spake2: s,
-                    exchange_message: message,
+                    exchange_message: Zeroizing::new(message),
                 }
             }
             SessionRole::Joiner => {
@@ -48,7 +48,7 @@ impl State {
 
                 Self {
                     spake2: s,
-                    exchange_message: message,
+                    exchange_message: Zeroizing::new(message),
                 }
             }
         }
@@ -90,7 +90,7 @@ impl AuthFlow {
         let state = self.state.as_ref().expect("AuthFlow already consumed");
 
         AuthMessage {
-            exchange_message: state.exchange_message.clone(),
+            exchange_message: state.exchange_message.to_vec(),
         }
     }
 

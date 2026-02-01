@@ -6,6 +6,7 @@ use revery_onion::{OnionClient, OnionService};
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Emitter, State};
 use tokio::sync::{Mutex, mpsc};
+use zeroize::Zeroizing;
 
 /// Connection states for the messaging session
 #[derive(Clone, Serialize)]
@@ -80,6 +81,8 @@ async fn host_session(
     state: State<'_, AppState>,
     app: AppHandle,
 ) -> Result<String, String> {
+    // Wrap secret immediately to ensure zeroization on drop
+    let secret = Zeroizing::new(secret);
     let message_sender = state.message_sender.clone();
     let app_clone = app.clone();
 
@@ -107,6 +110,8 @@ async fn join_session(
     state: State<'_, AppState>,
     app: AppHandle,
 ) -> Result<String, String> {
+    // Wrap secret immediately to ensure zeroization on drop
+    let secret = Zeroizing::new(secret);
     let message_sender = state.message_sender.clone();
     let app_clone = app.clone();
 
