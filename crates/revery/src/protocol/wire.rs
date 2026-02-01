@@ -92,7 +92,8 @@ where
             return Err(WireError::InvalidFormat);
         }
 
-        bincode::decode_from_slice(&payload, bincode::config::standard())
+        let config = bincode::config::standard().with_limit::<MAX_MESSAGE_SIZE>();
+        bincode::decode_from_slice(&payload, config)
             .map(|(result, _)| result)
             .map_err(|_| WireError::InvalidFormat)
     }
