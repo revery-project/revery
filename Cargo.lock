@@ -4852,6 +4852,7 @@ dependencies = [
  "infer",
  "sha2",
  "spake2",
+ "subtle",
  "thiserror 2.0.12",
  "tokio",
  "zeroize",

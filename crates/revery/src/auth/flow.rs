@@ -1,6 +1,7 @@
 use bincode::{Decode, Encode};
 use blake3::Hasher;
 use spake2::{Ed25519Group, Identity, Password, Spake2};
+use subtle::ConstantTimeEq;
 
 use crate::auth::{AuthError, SessionKeys};
 
@@ -116,7 +117,8 @@ impl AuthFlow {
         AuthVerification { challenge_hash }
     }
 
-    /// Verifies the peer's challenge hash matches our expected value
+    /// Verifies the peer's challenge hash matches our expected value using
+    /// constant-time comparison to prevent timing attacks
     pub fn verify_challenge(
         shared_secret: &[u8],
         address: &str,
@@ -125,7 +127,11 @@ impl AuthFlow {
     ) -> Result<(), AuthError> {
         let expected = Self::generate_challenge(shared_secret, address, timestamp);
 
-        if expected.challenge_hash != peer_verification.challenge_hash {
+        if !bool::from(
+            expected
+                .challenge_hash
+                .ct_eq(&peer_verification.challenge_hash),
+        ) {
             return Err(AuthError::InvalidState);
         }
 

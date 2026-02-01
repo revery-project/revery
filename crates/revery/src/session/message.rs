@@ -5,6 +5,7 @@ use chacha20::{ChaCha20, Key, Nonce};
 use hmac::{Hmac, Mac};
 use infer;
 use sha2::Sha256;
+use subtle::ConstantTimeEq;
 use zeroize::ZeroizeOnDrop;
 
 use super::error::SessionError;
@@ -114,10 +115,11 @@ impl Message {
         Ok(plaintext)
     }
 
-    /// Verifies the HMAC signature of the message
+    /// Verifies the HMAC signature of the message using constant-time comparison
+    /// to prevent timing attacks
     pub fn verify_hmac(&self, signing_key: &[u8; 32]) -> bool {
         let expected_hmac = Self::compute_hmac(self, signing_key);
-        expected_hmac == self.hmac
+        bool::from(expected_hmac.ct_eq(&self.hmac))
     }
 
     /// Computes HMAC over the message structure (excluding the HMAC field)

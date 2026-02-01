@@ -17,6 +17,7 @@ img-parts = "0.3.3"
 infer = "0.19.0"
 sha2 = "0.10.8"
 spake2 = { version = "0.4.0", features = ["std"] }
+subtle = "2.6.1"
 thiserror = "2.0.12"
 tokio = { version = "1.46.1", features = ["full"] }
 zeroize = { version = "1.8.1", features = ["derive"] }
