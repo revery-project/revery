@@ -183,7 +183,11 @@ where
             Err(_) => return Err(WireError::ConnectionClosed),
         }
 
-        let len_bytes = (payload.len() as u32).to_le_bytes();
+        let len: u32 = payload
+            .len()
+            .try_into()
+            .map_err(|_| WireError::MessageTooLarge(payload.len()))?;
+        let len_bytes = len.to_le_bytes();
         match tokio::time::timeout(send_timeout, self.stream.write_all(&len_bytes)).await {
             Ok(Ok(())) => {}
             Ok(Err(e)) => return Err(WireError::Io(e)),
