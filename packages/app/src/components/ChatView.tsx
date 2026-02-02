@@ -1,16 +1,20 @@
 import { useState, useEffect, useRef } from "react";
-import { Button, Card, CardBody, Textarea } from "@heroui/react";
+import { Button } from "@heroui/react";
 import { format } from "date-fns";
-import {
-  PaperAirplaneIcon,
-  XMarkIcon,
-  PhotoIcon,
-} from "@heroicons/react/24/outline";
+import { PlusIcon } from "@heroicons/react/24/outline";
 import {
   ConnectionStatus,
   LatestMessage,
   isImageMessage,
 } from "../hooks/useReverySession";
+
+interface Message {
+  id: string;
+  content: string;
+  contentType: "text" | "image";
+  timestamp: Date;
+  isSent: boolean;
+}
 
 interface ChatViewProps {
   connectionStatus: ConnectionStatus;
@@ -21,194 +25,211 @@ interface ChatViewProps {
 }
 
 export const ChatView = ({
+  connectionStatus,
   latestMessage,
   onSendMessage,
   onSendImage,
   onDisconnect,
 }: ChatViewProps) => {
   const [newMessage, setNewMessage] = useState("");
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const isConnected = connectionStatus.state.type === "connected";
 
   // Auto-focus the input when component mounts
   useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.focus();
+    if (inputRef.current) {
+      inputRef.current.focus();
     }
   }, []);
 
+  // Add received messages to the list
+  useEffect(() => {
+    if (latestMessage) {
+      const newMsg: Message = {
+        id: `received-${Date.now()}`,
+        content: latestMessage.content,
+        contentType: isImageMessage(latestMessage.contentType)
+          ? "image"
+          : "text",
+        timestamp: latestMessage.timestamp,
+        isSent: false,
+      };
+      setMessages((prev) => [...prev, newMsg]);
+    }
+  }, [latestMessage]);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
   const handleSend = () => {
     if (newMessage.trim()) {
+      const msg: Message = {
+        id: `sent-${Date.now()}`,
+        content: newMessage.trim(),
+        contentType: "text",
+        timestamp: new Date(),
+        isSent: true,
+      };
+      setMessages((prev) => [...prev, msg]);
       onSendMessage(newMessage.trim());
       setNewMessage("");
     }
   };
 
   const handleImageUpload = async (file: File) => {
-    if (!file.type.startsWith("image/")) {
-      return;
-    }
-
-    // Only support JPEG and PNG images
-    if (file.type !== "image/jpeg" && file.type !== "image/png") {
-      return;
-    }
+    if (!file.type.startsWith("image/")) return;
+    if (file.type !== "image/jpeg" && file.type !== "image/png") return;
 
     const arrayBuffer = await file.arrayBuffer();
     const uint8Array = new Uint8Array(arrayBuffer);
+
+    // Create a data URL for display
+    const reader = new FileReader();
+    reader.onload = () => {
+      const msg: Message = {
+        id: `sent-${Date.now()}`,
+        content: reader.result as string,
+        contentType: "image",
+        timestamp: new Date(),
+        isSent: true,
+      };
+      setMessages((prev) => [...prev, msg]);
+    };
+    reader.readAsDataURL(file);
+
     onSendImage(uint8Array);
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-
     if (file) {
       handleImageUpload(file);
     }
-
-    // Reset input so same file can be selected again
     if (e.target) {
       e.target.value = "";
-    }
-  };
-
-  const handlePaste = async (e: React.ClipboardEvent) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-
-    for (let i = 0; i < items.length; i++) {
-      const item = items[i];
-
-      if (item.type.startsWith("image/")) {
-        e.preventDefault();
-
-        const file = item.getAsFile();
-
-        if (file) {
-          handleImageUpload(file);
-        }
-
-        break;
-      }
     }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-
       handleSend();
     }
   };
 
   return (
-    <div className="w-full max-w-4xl h-full flex flex-col mx-auto">
-      {/* Latest Message */}
-      <div className="flex-1 mb-4 p-6">
-        <div className="flex-1 flex items-center justify-center relative min-h-0">
-          {!latestMessage ? (
-            <div className="text-center text-slate-500">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
-                <svg
-                  className="w-8 h-8 text-slate-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={1.5}
-                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                  />
-                </svg>
-              </div>
-              No messages yet. Start the conversation!
-            </div>
-          ) : (
-            <div className="w-full max-w-lg">
-              <div
-                className={
-                  "rounded-2xl p-6 shadow-md bg-white text-slate-800 mr-8 ring-1 ring-slate-200/50"
-                }
-              >
-                <div className="text-lg font-medium whitespace-pre-wrap break-words text-left leading-relaxed">
-                  {isImageMessage(latestMessage.contentType) ? (
-                    <img
-                      src={latestMessage.content}
-                      alt="Shared image"
-                      className="max-w-full max-h-96 rounded-lg"
-                    />
-                  ) : (
-                    latestMessage.content
-                  )}
-                </div>
-                <div className={"text-sm mt-3 text-left text-slate-500"}>
-                  {format(latestMessage.timestamp, "h:mm a")}
-                </div>
-              </div>
-            </div>
-          )}
+    <div className="h-full w-full flex flex-col bg-white">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span className="text-gray-900 text-sm">Other user is online</span>
+          <div
+            className={`w-2.5 h-2.5 rounded-full ${
+              isConnected ? "bg-green-500" : "bg-gray-400"
+            }`}
+          />
         </div>
+        <button
+          onClick={onDisconnect}
+          className="text-gray-900 text-sm font-semibold hover:text-gray-600 transition-colors"
+        >
+          End chat
+        </button>
       </div>
 
-      {/* Input */}
-      <Card className="shadow-lg bg-white/90 backdrop-blur-sm border-0 ring-1 ring-slate-200/50">
-        <CardBody className="p-4">
-          <div className="flex gap-3">
-            <Textarea
-              ref={textareaRef}
-              placeholder="Type your message..."
+      {/* Messages area */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {messages.length === 0 ? (
+          <div className="h-full flex items-center justify-center">
+            <p className="text-gray-400 text-sm">
+              No messages yet. Start the conversation!
+            </p>
+          </div>
+        ) : (
+          messages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`flex ${msg.isSent ? "justify-end" : "justify-start"}`}
+            >
+              <div
+                className={`max-w-[80%] rounded-2xl px-4 py-3 ${
+                  msg.isSent
+                    ? "bg-brand text-white rounded-br-md"
+                    : "bg-gray-100 text-gray-900 rounded-bl-md"
+                }`}
+              >
+                {msg.contentType === "image" ? (
+                  <img
+                    src={msg.content}
+                    alt="Shared image"
+                    className="max-w-full max-h-64 rounded-lg"
+                  />
+                ) : (
+                  <p className="text-sm whitespace-pre-wrap break-words">
+                    {msg.content}
+                  </p>
+                )}
+                <p
+                  className={`text-xs mt-1 ${
+                    msg.isSent ? "text-blue-200" : "text-gray-500"
+                  }`}
+                >
+                  {format(msg.timestamp, "HH:mm")}
+                </p>
+              </div>
+            </div>
+          ))
+        )}
+        <div ref={messagesEndRef} />
+      </div>
+
+      {/* Input area */}
+      <div className="px-4 pb-2">
+        <div className="flex items-center gap-3">
+          {/* Plus button for attachments */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <Button
+            isIconOnly
+            variant="light"
+            className="text-gray-400 hover:text-gray-600 bg-gray-100 rounded-full"
+            onPress={() => fileInputRef.current?.click()}
+          >
+            <PlusIcon className="w-6 h-6" />
+          </Button>
+
+          {/* Message input */}
+          <div className="flex-1">
+            <input
+              ref={inputRef}
+              type="text"
+              placeholder="Type your message"
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyDown={handleKeyPress}
-              onPaste={handlePaste}
-              minRows={1}
-              maxRows={4}
-              className="flex-1"
-              classNames={{
-                inputWrapper:
-                  "bg-transparent border-0 shadow-none hover:!bg-transparent group-data-[focus=true]:!bg-transparent",
-                input: "text-slate-700 placeholder:text-slate-400",
-              }}
+              className="w-full bg-gray-100 text-gray-900 text-sm rounded-full px-4 py-3 border-0 focus:outline-none focus:ring-2 focus:ring-brand/20 placeholder:text-gray-400"
             />
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/png"
-              onChange={handleFileSelect}
-              className="hidden"
-            />
-            <Button
-              color="default"
-              variant="light"
-              onPress={() => fileInputRef.current?.click()}
-              className="self-end text-slate-500 hover:text-slate-700 transition-colors duration-200"
-              isIconOnly
-            >
-              <PhotoIcon className="w-4 h-4" />
-            </Button>
-            <Button
-              color="primary"
-              onPress={handleSend}
-              isDisabled={!newMessage.trim()}
-              className="self-end shadow-lg bg-slate-700 hover:bg-slate-800 transition-all duration-200 hover:scale-105"
-              isIconOnly
-            >
-              <PaperAirplaneIcon className="w-4 h-4" />
-            </Button>
-            <Button
-              color="danger"
-              variant="light"
-              onPress={onDisconnect}
-              className="self-end text-slate-500 hover:text-red-500 transition-colors duration-200"
-              isIconOnly
-            >
-              <XMarkIcon className="w-4 h-4" />
-            </Button>
           </div>
-        </CardBody>
-      </Card>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="px-4 pb-4 pt-1">
+        <p className="text-center text-gray-400 text-xs">
+          Secure connection active
+        </p>
+      </div>
     </div>
   );
 };
