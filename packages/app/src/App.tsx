@@ -1,7 +1,7 @@
 import "./App.css";
 
 import { useReverySession } from "./hooks/useReverySession";
-import { Entry, ConnectingView, ChatView } from "./components";
+import { Splash, Entry, ConnectingView, ChatView } from "./components";
 
 function App() {
   const {
@@ -14,6 +14,7 @@ function App() {
     hostAddress,
 
     // Actions
+    leaveSplash,
     hostSession,
     joinSession,
     sendMessage,
@@ -23,6 +24,8 @@ function App() {
 
   const renderContent = () => {
     switch (appState) {
+      case "splash":
+        return <Splash onContinue={leaveSplash} />;
       case "entry":
         return (
           <Entry
@@ -52,18 +55,9 @@ function App() {
     }
   };
 
+  // All screens use full-bleed layout
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/40 relative overflow-hidden">
-      {/* Subtle background pattern */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(120,119,198,0.3),rgba(255,255,255,0))] pointer-events-none" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(99,102,241,0.15),rgba(255,255,255,0))] pointer-events-none" />
-
-      <div className="flex-1 flex overflow-hidden relative z-10">
-        <main className="flex-1 flex flex-col items-center justify-center p-4 overflow-hidden">
-          {renderContent()}
-        </main>
-      </div>
-    </div>
+    <div className="h-screen w-screen overflow-hidden">{renderContent()}</div>
   );
 }
 
